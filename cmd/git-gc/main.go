@@ -38,6 +38,7 @@ type model struct {
 
 type styles struct {
 	checkmark      lipgloss.Style
+	start          lipgloss.Style
 	done           lipgloss.Style
 	currentDirName lipgloss.Style
 }
@@ -51,6 +52,7 @@ func main() {
 	)
 	flag.StringVar(&rootDir, "root", "", "Root directory to search for git repos")
 	flag.IntVar(&parallel, "parallel", runtime.NumCPU(), "Number of parallel git gc processes to run")
+	flag.Parse()
 
 	m, err := newModel(rootDir, parallel)
 	if err != nil {
@@ -206,9 +208,10 @@ func newModel(rootDir string, concurrency int) (model, error) {
 
 func newStyles() styles {
 	return styles{
+		start:          lipgloss.NewStyle().Foreground(lipgloss.Color("63")),
 		checkmark:      lipgloss.NewStyle().Foreground(lipgloss.Color("42")).SetString("✓"),
-		done:           lipgloss.NewStyle().Margin(1, 2),
 		currentDirName: lipgloss.NewStyle().Foreground(lipgloss.Color("211")),
+		done:           lipgloss.NewStyle().Margin(1, 2),
 	}
 }
 
@@ -230,6 +233,10 @@ func findDirectories(rootDir string) ([]string, error) {
 	dirs := hashset.New[string]()
 	if err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
+			if os.IsPermission(err) {
+				return nil
+			}
+
 			return err
 		}
 
