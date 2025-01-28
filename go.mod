@@ -1,4 +1,4 @@
-module git-gc
+module github.com/kellen-miller/git-gc
 
 go 1.23
 
