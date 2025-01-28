@@ -6,7 +6,7 @@ This is a simple script to run `git gc` on all git repositories in a directory.
 
 ## Installation
 
-`go install github.com/kellen-miller/git-gc/cmd/git-gc`
+`go install github.com/kellen-miller/git-gc/cmd/git-gc@latest`
 
 ## Flags
 
