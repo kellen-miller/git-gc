@@ -178,6 +178,14 @@ func newModel(rootDir string, concurrency int) (model, error) {
 	s := spinner.New()
 	s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("63"))
 
+	if rootDir == "" {
+		var err error
+		rootDir, err = os.UserHomeDir()
+		if err != nil {
+			return model{}, fmt.Errorf("could not determine user home directory: %w", err)
+		}
+	}
+
 	dirs, err := findDirectories(rootDir)
 	if err != nil {
 		return model{}, err
@@ -205,22 +213,14 @@ func newStyles() styles {
 }
 
 func findDirectories(rootDir string) ([]string, error) {
-	if rootDir == "" {
-		var err error
-		rootDir, err = os.UserHomeDir()
-		if err != nil {
-			return nil, err
-		}
-	}
-
 	root, err := filepath.Abs(os.ExpandEnv(rootDir))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("could not determine absolute path for root dir: %w", err)
 	}
 
 	fi, err := os.Stat(root)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("could not stat root dir: %w", err)
 	}
 
 	if !fi.IsDir() {
