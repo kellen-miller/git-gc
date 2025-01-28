@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -44,10 +45,14 @@ type styles struct {
 type dirGitGCCompleted string
 
 func main() {
-	var parallel int
+	var (
+		rootDir  string
+		parallel int
+	)
+	flag.StringVar(&rootDir, "root", "", "Root directory to search for git repos")
 	flag.IntVar(&parallel, "parallel", runtime.NumCPU(), "Number of parallel git gc processes to run")
 
-	m, err := newModel(parallel)
+	m, err := newModel(rootDir, parallel)
 	if err != nil {
 		fmt.Println("Error creating new model:", err)
 		os.Exit(1)
@@ -169,11 +174,11 @@ func (m model) View() string {
 		pkgCount
 }
 
-func newModel(concurrency int) (model, error) {
+func newModel(rootDir string, concurrency int) (model, error) {
 	s := spinner.New()
 	s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("63"))
 
-	dirs, err := findDirectories()
+	dirs, err := findDirectories(rootDir)
 	if err != nil {
 		return model{}, err
 	}
@@ -199,17 +204,31 @@ func newStyles() styles {
 	}
 }
 
-func findDirectories() ([]string, error) {
-	home, err := os.UserHomeDir()
+func findDirectories(rootDir string) ([]string, error) {
+	if rootDir == "" {
+		var err error
+		rootDir, err = os.UserHomeDir()
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	root, err := filepath.Abs(os.ExpandEnv(rootDir))
 	if err != nil {
 		return nil, err
 	}
 
-	var (
-		developmentDir = filepath.Join(home, "Development")
-		dirs           = hashset.New[string]()
-	)
-	if err := filepath.Walk(developmentDir, func(path string, info os.FileInfo, err error) error {
+	fi, err := os.Stat(root)
+	if err != nil {
+		return nil, err
+	}
+
+	if !fi.IsDir() {
+		return nil, errors.New("root dir '" + root + "' is not a directory")
+	}
+
+	dirs := hashset.New[string]()
+	if err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
